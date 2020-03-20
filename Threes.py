@@ -2,6 +2,9 @@ import random
 
 # TODO: enable ability to play multiple of the same cards at once
 # TODO: enable choice to pick up the pile
+# TODO: handle errors with multiple 3s played in a row
+# TODO: sort cards
+# TODO: print mystery card chosen by computer that makes it pick up the pile
 
 # print card visuals using ascii characters
 def print_cards(cards, multiple_cards, mysteries):
@@ -646,9 +649,13 @@ class Game:
         if not self.pile:
             return True
         if prev_card.value == '3':
-            if len(self.pile) == 1:
+            prev_card = Card(None, None)
+            for card in reversed(self.pile):
+                if card.value != '3':
+                    prev_card = card
+                    break
+            if prev_card.value == None:
                 return True
-            prev_card = self.pile[len(self.pile) - 2]
         if self.in_reverse:
             if played_card < prev_card:
                 return True
