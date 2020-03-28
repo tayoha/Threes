@@ -2,7 +2,6 @@ import random
 
 # TODO: enable ability to play multiple of the same cards at once
 # TODO: enable choice to pick up the pile
-# TODO: handle errors with multiple 3s played in a row
 # TODO: sort cards
 # TODO: print mystery card chosen by computer that makes it pick up the pile
 
