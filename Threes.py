@@ -1,12 +1,12 @@
 import random
 
-# TODO: enable ability to play multiple of the same cards at once
 # TODO: enable choice to pick up the pile
-# TODO: sort cards
-# TODO: print mystery card chosen by computer that makes it pick up the pile
 
 # print card visuals using ascii characters
 def print_cards(cards, multiple_cards, mysteries):
+    if not mysteries:
+        cards.sort(key = lambda x: x.rank)
+    
     suit_names = ['spades', 'diamonds', 'hearts', 'clubs']
     suit_symbols = ['♠', '♦', '♥', '♣']
 
@@ -74,79 +74,55 @@ def print_cards(cards, multiple_cards, mysteries):
         row_start_idx = num_rows * cards_per_row
 
 class Card:
-    def __init__(self, suit, value):
+    def __init__(self, suit, value, rank):
         self.suit = suit
         self.value = value
+        self.rank = rank
         if self.value == '8' or self.value == '10' or self.value == 'one-eyed jack':
             self.burns = True
         else:
             self.burns = False
 
     def isHighCard(self):
-        if self.value == 'one-eyed jack' or self.value == 'two-eyed jack':
-            return True
-        elif self.value == 'queen':
-            return True
-        elif self.value == 'king':
-            return True
-        elif self.value == 'ace':
+        if self.rank > 10:
             return True
         else:
             return False
 
     def __eq__(self, other):
-        if self.value == other.value:
-            return True
-        elif self.value == 'one-eyed jack' and other.value == 'two-eyed jack':
-            return True
-        elif self.value == 'two-eyed jack' and other.value == 'one-eyed jack':
+        if self.rank == other.rank:
             return True
         else:
             return False
 
     def __lt__(self, other):
         # if the card values are equal, return false
-        if self == other:
-            return False
-        # compare unequal cards
-        elif self.isHighCard():
-            # compare two high cards
-            if other.isHighCard():
-                if self.value == 'one-eyed jack' or self.value == 'two-eyed jack':
-                    return True
-                elif self.value == 'queen':
-                    if other.value == 'one-eyed jack' or other.value == 'two-eyed jack':
-                        return False
-                    else:
-                        return True
-                elif self.value == 'king':
-                    if other.value == 'ace':
-                        return True
-                    else:
-                        return False
-                else:
-                    return False
-            # compare high card with low card
-            else:
-                return False
+        if self.rank < other.rank:
+            return True
         else:
-            # compare low card with high card
-            if other.isHighCard():
-                return True
-            # compare two low cards
-            else:
-                self_int_value = int(self.value)
-                other_int_value = int(other.value)
-                if self_int_value < other_int_value:
-                    return True
-                else:
-                    return False
+            return False
 
 class Deck:
     suits = ['hearts', 'clubs', 'spades', 'diamonds']
     values = ['2', '3', '4', '5', '6',\
         '7', '8', '9', '10', 'one-eyed jack',\
             'two-eyed jack', 'queen', 'king', 'ace']
+    ranks = {
+        '2': 2,
+        '3': 3,
+        '4': 4,
+        '5': 5,
+        '6': 6,
+        '7': 7,
+        '8': 8,
+        '9': 9,
+        '10': 10,
+        'one-eyed jack': 11,
+        'two-eyed jack': 11,
+        'queen': 12,
+        'king': 13,
+        'ace': 14
+    }
     cards = []
 
     def __init__(self):
@@ -154,14 +130,14 @@ class Deck:
             for value in self.values:
                 if value == 'one-eyed jack':
                     if suit == 'hearts' or suit == 'spades':
-                        new_card = Card(suit, value)
+                        new_card = Card(suit, value, self.ranks[value])
                         self.cards.append(new_card)
                 elif value == 'two-eyed jack':
                     if suit == 'clubs' or suit == 'diamonds':
-                        new_card = Card(suit, value)
+                        new_card = Card(suit, value, self.ranks[value])
                         self.cards.append(new_card)
                 else:
-                    new_card = Card(suit, value)
+                    new_card = Card(suit, value, self.ranks[value])
                     self.cards.append(new_card)
         random.shuffle(self.cards)
 
@@ -288,7 +264,7 @@ class Game:
         knowns = False
         just_burned = False
         if not self.pile:
-            prev_card = Card(None, None)
+            prev_card = Card(None, None, None)
             print("The pile is empty. You can play anything!\n")
         else:
             prev_card = self.pile[len(self.pile) - 1]
@@ -327,24 +303,21 @@ class Game:
             # pick up the pile
             print("Computer played the " + prev_card.value + " of " + prev_card.suit)
             print()
-            print("None of your options are playable! Pick up the pile!\n")
+            print("None of your options are playable. Pick up the pile!\n")
             self.pickUp(True, -1)
             return
         if (not hand) and (not knowns):
             # enumerate user unknowns
             print("Your mystery cards:")
             print_cards(self.user_mysteries, True, True)
-            #for i in range(len(self.user_mysteries)):
-            #    print("Mystery card " + str(i))
-            #print()
         # get user input and check for errors
-        play = self.getUserInput(hand, knowns)
+        plays = self.getUserInput(hand, knowns)
         if hand:
-            played_card = self.user_hand[play]
+            played_card = self.user_hand[plays[0]]
         elif knowns:
-            played_card = self.user_knowns[play]
+            played_card = self.user_knowns[plays[0]]
         else:
-            played_card = self.user_mysteries[play]
+            played_card = self.user_mysteries[plays[0]]
             cards_arr = []
             cards_arr.append(played_card)
             print("You chose:")
@@ -355,28 +328,28 @@ class Game:
         # if user chooses mystery card that is not playable
         if (not hand) and (not knowns):
             if not self.checkPlay(played_card, prev_card):
-                print("Not a valid play! Pick up the pile!\n")
+                print("Not a valid play. Pick up the pile!\n")
                 # pick up the pile
-                self.pickUp(True, play)
+                self.pickUp(True, plays[0])
                 return
         while not self.checkPlay(played_card, prev_card):
             print("Not a valid play!\n")
-            play = self.getUserInput(hand, knowns)
+            plays = self.getUserInput(hand, knowns)
             if hand:
-                played_card = self.user_hand[play]
+                played_card = self.user_hand[plays[0]]
             elif knowns:
-                played_card = self.user_knowns[play]
+                played_card = self.user_knowns[plays[0]]
             else:
-                played_card = self.user_mysteries[play]
+                played_card = self.user_mysteries[plays[0]]
         if played_card == prev_card:
-            self.num_repeats += 1
+            self.num_repeats += len(plays)
             # if four repeats, burn the pile
-            if self.num_repeats == 4:
+            if self.num_repeats == 4: # only works with one deck; must deal with >4 case if using multiple decks
                 self.pile.clear()
                 self.in_reverse = False
                 just_burned = True
         else:
-            self.num_repeats = 1
+            self.num_repeats = len(plays)
         # set reversed status
         if played_card.value == '7':
             self.in_reverse = True
@@ -392,15 +365,19 @@ class Game:
             self.pile.append(played_card)
         # remove card from user's hand
         if hand:
-            self.user_hand.pop(play)
+            plays.sort()
+            for play in reversed(plays):
+                self.user_hand.pop(play)
             # take card from deck if user has less than 3 cards in hand
-            if (self.index < len(self.deck.cards)) and (len(self.user_hand) < 3):
+            while (self.index < len(self.deck.cards)) and (len(self.user_hand) < 3):
                 self.user_hand.append(self.deck.cards[self.index])
                 self.index += 1
         elif knowns:
-            self.user_knowns.pop(play)
+            plays.sort()
+            for play in reversed(plays):
+                self.user_knowns.pop(play)
         else:
-            self.user_mysteries.pop(play)
+            self.user_mysteries.pop(plays[0])
         if just_burned and (self.checkForWin() != 'user'):
             print("You burned the pile and get to play again!\n")
             self.handleUserPlay()
@@ -483,7 +460,7 @@ class Game:
         just_burned = False
         # declare previously played card (card on top of the pile)
         if not self.pile:
-            prev_card = Card(None, None)
+            prev_card = Card(None, None, None)
         else:
             prev_card = self.pile[len(self.pile) - 1]
         pick_up = True
@@ -508,7 +485,7 @@ class Game:
             return
         # play card with the lowest ranking that results in a valid play
         curr_rank = 14
-        play_card = Card(None, None)
+        play_card = Card(None, None, None)
         card_idx = -1
         strat2 = False
         if hand:
@@ -551,6 +528,7 @@ class Game:
             play_card = self.computer_mysteries[card_idx]
             if not self.checkPlay(play_card, prev_card):
                 # computer must pick up the pile
+                print("Computer chose the following mystery card: " + play_card.value + " of " + play_card.suit)
                 print("Computer picks up the pile!\n")
                 self.pickUp(False, card_idx)
                 return
@@ -604,33 +582,69 @@ class Game:
     
     # get user's card choice
     def getUserInput(self, hand, knowns):
-        play = 0
         while (True):
-            user_input = input("Please enter the card number you want to play! If you'd like to see the computer's upturned cards, enter 'ck'\n")
+            plays = []
+            user_input = input("Please enter the card number you want to play. If you'd like to play multiple cards of the same value, separate the card numbers by an ampersand ('&'). If you'd like to see the computer's upturned cards, enter 'ck'. If you'd like to quit the game, enter 'q'.\n")
             try:
-                play = int(user_input)
+                cards = user_input.split('&')
+                for card in cards:
+                    play = int(card)
+                    plays.append(play)
             except ValueError:
                 if user_input == 'ck':
                     print("Computer's upturned cards:")
                     print_cards(self.computer_knowns, True, False)
+                elif user_input == 'q':
+                    print("Thanks for playing!")
+                    exit(0)
                 else:
                     print("Not a valid card number!\n")
                 continue
-            if hand:   
-                if play < 0 or play >= len(self.user_hand):
-                    print("Not a valid card number!\n")
-                else:
-                    return play
+            if hand:
+                bad_play = False
+                for play in plays:
+                    if play < 0 or play >= len(self.user_hand):
+                        print("Not a valid card number!\n")
+                        bad_play = True
+                        break
+                value = self.user_hand[plays[0]].value
+                for play in plays:
+                    if self.user_hand[play].value != value:
+                        print("All chosen cards must be the same value!\n")
+                        bad_play = True
+                        break
+                if bad_play:
+                    continue
+                return plays
             elif knowns:
-                if play < 0 or play >= len(self.user_knowns):
-                    print("Not a valid card number!\n")
-                else:
-                    return play
+                bad_play = False
+                for play in plays:
+                    if play < 0 or play >= len(self.user_knowns):
+                        print("Not a valid card number!\n")
+                        bad_play = True
+                        break
+                value = self.user_knowns[plays[0]].value
+                for play in plays:
+                    if self.user_knowns[play].value != value:
+                        print("All chosen cards must be the same value!\n")
+                        bad_play = True
+                        break
+                if bad_play:
+                    continue
+                return plays
             else:
-                if play < 0 or play >= len(self.user_mysteries):
-                    print("Not a valid card number!\n")
-                else:
-                    return play
+                if len(plays) > 1:
+                    print("Can't choose more than one mystery card!\n")
+                    continue
+                bad_play = False
+                for play in plays:
+                    if play < 0 or play >= len(self.user_mysteries):
+                        print("Not a valid card number!\n")
+                        bad_play = True
+                        break
+                if bad_play:
+                    continue
+                return plays
     
     # check if someone has won
     def checkForWin(self):
@@ -648,7 +662,7 @@ class Game:
         if not self.pile:
             return True
         if prev_card.value == '3':
-            prev_card = Card(None, None)
+            prev_card = Card(None, None, None)
             for card in reversed(self.pile):
                 if card.value != '3':
                     prev_card = card
