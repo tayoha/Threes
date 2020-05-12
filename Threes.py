@@ -1,6 +1,10 @@
 import random
 
 # TODO: enable choice to pick up the pile
+# TODO: print computer card that burns the pile
+# TODO: organize code
+# TODO: make interface more readable
+# TODO: when computer plays the last card in their hand, it doesn't print
 
 # print card visuals using ascii characters
 def print_cards(cards, multiple_cards, mysteries):
@@ -203,13 +207,9 @@ class Game:
     # handle user trades between hand and knowns
     def handleUserTrades(self):
         print("These are the cards in your hand:")
-        #for i, card in enumerate(self.user_hand):
-        #    print("Card " + str(i) + ": " + card.value + " of " + card.suit)
         print_cards(self.user_hand, True, False)
         print()
         print("These are your upturned cards:")
-        #for i, card in enumerate(self.user_knowns):
-        #    print("Card " + str(i) + ": " + card.value + " of " + card.suit)
         print_cards(self.user_knowns, True, False)
         print()
         hand_to_trade = input("Please select the hand card number you would like to trade. If you do not want to trade any cards, please enter 'p'\n")
@@ -258,7 +258,7 @@ class Game:
         return True
 
     # handles user play; handles valid plays, recursions from burning the pile, and pick ups
-    def handleUserPlay(self):
+    def handleUserPlay(self, played):
         # display previously played card
         hand = False
         knowns = False
@@ -268,10 +268,13 @@ class Game:
             print("The pile is empty. You can play anything!\n")
         else:
             prev_card = self.pile[len(self.pile) - 1]
-            print("Previously played card:")
-            cards_arr = []
-            cards_arr.append(prev_card)
-            print_cards(cards_arr, False, False)
+            print("Previously played card(s):")
+            multiple_cards = True
+            if len(played) > 1:
+                multiple_cards = True
+            else:
+                multiple_cards = False
+            print_cards(played, multiple_cards, False)
             print()
         # print cards that user can choose from (hand or knowns)
         pick_up = True
@@ -362,7 +365,14 @@ class Game:
             just_burned = True
         # if burn card not played, add it to the pile
         elif not just_burned:
-            self.pile.append(played_card)
+            if hand:
+                for idx in plays:
+                    self.pile.append(self.user_hand[idx])
+            elif knowns:
+                for idx in plays:
+                    self.pile.append(self.user_knowns[idx])
+            else:
+                self.pile.append(self.user_mysteries[plays[0]])
         # remove card from user's hand
         if hand:
             plays.sort()
@@ -380,7 +390,7 @@ class Game:
             self.user_mysteries.pop(plays[0])
         if just_burned and (self.checkForWin() != 'user'):
             print("You burned the pile and get to play again!\n")
-            self.handleUserPlay()
+            self.handleUserPlay([])
 
     def handleComputerTrades(self):
         first_deck = ''
@@ -482,19 +492,22 @@ class Game:
             # pick up the pile
             print("Computer picks up the pile!\n")
             self.pickUp(False, -1)
-            return
+            return []
         # play card with the lowest ranking that results in a valid play
         curr_rank = 14
         play_card = Card(None, None, None)
+        play_cards = []
         card_idx = -1
+        card_indices = []
         strat2 = False
         if hand:
             if not self.user_hand:
                 for i, card in enumerate(self.computer_hand):
                     if ((card.value == '7') or card.isHighCard()) and (self.checkPlay(card, prev_card)):
                         strat2 = True
-                        card_idx = i
+                        card_indices.append(i)
                         play_card = card
+                        play_cards.append(play_card)
                         break
             if strat2 == False:
                 for i, card in enumerate(self.computer_hand):
@@ -503,15 +516,23 @@ class Game:
                         curr_rank = new_rank
                         card_idx = i
                         play_card = card
+                card_indices.append(card_idx)
+                play_cards.append(play_card)
+                for i, card in enumerate(self.computer_hand):
+                    if (i != card_indices[0]) and (card == self.computer_hand[card_indices[0]]) and (self.card_ranks[self.computer_hand[card_indices[0]].value] < 6):
+                        card_indices.append(i)
+                        play_cards.append(card)
             # remove card from computer's hand
-            self.computer_hand.pop(card_idx)
+            for idx in reversed(card_indices):
+                self.computer_hand.pop(idx)
         elif knowns:
             if not self.user_hand:
                 for i, card in enumerate(self.computer_knowns):
                     if ((card.value == '7') or card.isHighCard()) and (self.checkPlay(card, prev_card)):
                         strat2 = True
-                        card_idx = i
+                        card_indices.append(i)
                         play_card = card
+                        play_cards.append(play_card)
                         break
             if strat2 == False:
                 for i, card in enumerate(self.computer_knowns):
@@ -520,30 +541,38 @@ class Game:
                         curr_rank = new_rank
                         card_idx = i
                         play_card = card
+                card_indices.append(card_idx)
+                play_cards.append(play_card)
+                for i, card in enumerate(self.computer_knowns):
+                    if (i != card_indices[0]) and (card == self.computer_knowns[card_indices[0]]) and (self.card_ranks[self.computer_knowns[card_indices[0]].value] < 6):
+                        card_indices.append(i)
+                        play_cards.append(card)
             # remove card from computer knowns
-            self.computer_knowns.pop(card_idx)
+            for idx in reversed(card_indices):
+                self.computer_knowns.pop(idx)
         else:
             print("Computer playing with " + str(len(self.computer_mysteries)) + " mystery cards")
             card_idx = random.randint(0, len(self.computer_mysteries) - 1)
             play_card = self.computer_mysteries[card_idx]
+            play_cards.append(play_card)
             if not self.checkPlay(play_card, prev_card):
                 # computer must pick up the pile
                 print("Computer chose the following mystery card: " + play_card.value + " of " + play_card.suit)
                 print("Computer picks up the pile!\n")
                 self.pickUp(False, card_idx)
-                return
+                return []
             # remove card from computer mysteries
             self.computer_mysteries.pop(card_idx)
         # set number of card repeats
         if play_card == prev_card:
-            self.num_repeats += 1
+            self.num_repeats += len(card_indices)
             # if four repeats, burn the pile
-            if self.num_repeats == 4:
+            if self.num_repeats == 4: # this only works with one deck; must account for >4 case with multiple decks
                 self.pile.clear()
                 self.in_reverse = False
                 just_burned = True
         else:
-            self.num_repeats = 1
+            self.num_repeats = len(card_indices)
         # set reversed status
         if play_card.value == '7':
             self.in_reverse = True
@@ -556,15 +585,18 @@ class Game:
             just_burned = True
         # if burn card not played, add it to the pile
         elif not just_burned:
-            self.pile.append(play_card)
+            for card in play_cards:
+                self.pile.append(card)
         if hand:
             # take card from deck if computer has less than 3 cards in hand
-            if (self.index < len(self.deck.cards)) and (len(self.computer_hand) < 3):
+            while (self.index < len(self.deck.cards)) and (len(self.computer_hand) < 3):
                 self.computer_hand.append(self.deck.cards[self.index])
                 self.index += 1
         if just_burned and (self.checkForWin() != 'computer'):
             print("Computer burned the pile and gets to play again!\n")
-            self.handleComputerPlay()
+            return self.handleComputerPlay()
+        else:
+            return play_cards
     
     # pick up the pile
     def pickUp(self, user, mystery_index):
@@ -705,25 +737,26 @@ class Game:
         if first_player:
             print("Computer goes first!\n")
             while(True):
-                self.handleComputerPlay()
+                played = self.handleComputerPlay()
                 winner = self.checkForWin()
                 if winner != 'neither':
                     print(winner + " wins!")
                     exit(0)
-                self.handleUserPlay()
+                self.handleUserPlay(played)
                 winner = self.checkForWin()
                 if winner != 'neither':
                     print(winner + " wins!")
                     exit(0)
         else:
             print("User goes first!\n")
+            played = []
             while(True):
-                self.handleUserPlay()
+                self.handleUserPlay(played)
                 winner = self.checkForWin()
                 if winner != 'neither':
                     print(winner + " wins!")
                     exit(0)
-                self.handleComputerPlay()
+                played = self.handleComputerPlay()
                 winner = self.checkForWin()
                 if winner != 'neither':
                     print(winner + " wins!")
