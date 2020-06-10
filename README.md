@@ -5,7 +5,7 @@ Threes is a card game which proceeds as follows:
 * Each player is dealt 3 face-up cards (everyone can see them)
 * Each player is dealt 3 hand cards (only the player themself can see them)
 * The remaining cards are set in the middle and are called the "draw pile"
-    * With more players, more decks will need to be used (1 deck for 2-3 players, 2 decks for 4-5 players, etc.)
+    * With more players, more decks will be needed (1 deck for 2-3 players, 2 decks for 4-5 players, etc.)
 * The player to the right of the dealer plays first
 * The plays continue counterclockwise, one play at a time
 * When the pile is burned, all the cards that have been played are set to the side and will no longer be used in the game. They form the "burn pile"
@@ -32,7 +32,7 @@ Threes is a card game which proceeds as follows:
 * The first player to get rid of all of their cards wins
 * The game may be played to determine a second place winner, third place winner, etc. by skipping the turns of the players who have already finished
 
-The interface is terminal-based and currently single-player. The use plays against the computer.
+The interface is terminal-based and currently single-player. The user plays against the computer.
 
 ## Usage
 
